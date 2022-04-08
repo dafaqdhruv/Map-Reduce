@@ -1,27 +1,12 @@
-package mr
+package mapReduce
 
-//
-// RPC definitions.
-//
-// remember to capitalize all names.
-//
-
-import "os"
-import "strconv"
-
-
-type ExampleArgs struct {
-	X int
-}
-
-type ExampleReply struct {
-	Y int
-}
-
-
+import (
+	"os"
+	"strconv"
+)
 
 type TaskArgs struct {
-	WorkerId 	int
+	WorkerId int
 }
 
 type TaskReply struct {
@@ -29,9 +14,9 @@ type TaskReply struct {
 }
 
 type ReportTaskArgs struct {
-	Done 	bool
-	Seq 	int
-	Phase	TaskPhase
+	Done     bool
+	Index    int
+	Phase    TaskPhase
 	WorkerId int
 }
 
@@ -42,14 +27,17 @@ type RegisterArgs struct {
 }
 
 type RegisterReply struct {
-	WorkerId	int
+	WorkerId int
 }
+
 // Cook up a unique-ish UNIX-domain socket name
 // in /var/tmp, for the coordinator.
 // Can't use the current directory since
 // Athena AFS doesn't support UNIX-domain sockets.
-func coordinatorSock() string {
-	s := "/var/tmp/824-mr-"
+func getSocketDir() string {
+	// s := "/var/tmp/824-mr-"
+	s, _ := os.Getwd()
+	s += "/dat/mr-"
 	s += strconv.Itoa(os.Getuid())
 	return s
 }
