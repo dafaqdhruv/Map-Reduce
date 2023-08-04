@@ -48,9 +48,9 @@ func StartWorkers(
 	worker.run()
 }
 
-func (w *Worker) requestTask() Task {
+func (w *Worker) requestTask() (Task, bool) {
 	args := TaskArgs{WorkerId: w.id}
-	reply := TaskReply{}
+	reply := TaskReply{QuitWorker: false}
 
 	if ok := call("Coordinator.GetTaskForWorker", &args, &reply); !ok {
 		log.WithFields(log.Fields{
@@ -59,13 +59,19 @@ func (w *Worker) requestTask() Task {
 		}).Fatalf("Get task for worker #%d failed", w.id)
 	}
 
-	return *reply.Task
+	return *reply.Task, reply.QuitWorker
 }
 
 func (w *Worker) run() {
 	for {
-		task := w.requestTask()
-		if !task.Alive {
+		task, quitWorker := w.requestTask()
+
+		if quitWorker {
+			log.WithFields(log.Fields{
+				"actorType":  "worker",
+				"methodName": "Shutdown()",
+			}).Info("Shutdown flag recieved. Exiting worker #", w.id)
+
 			return
 		}
 
@@ -147,7 +153,7 @@ func (w *Worker) doMapTask(task Task) {
 		}
 	}
 
-	w.reportTask(task, err)
+	w.reportTask(task, nil)
 }
 
 func (w *Worker) doReduceTask(task Task) {

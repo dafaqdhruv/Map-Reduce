@@ -18,7 +18,7 @@ type Task struct {
 	NMaps    int
 	Index    int
 	Phase    TaskPhase
-	Alive    bool // should this always be true? what does this even mean?
+	Finished bool
 }
 
 const (

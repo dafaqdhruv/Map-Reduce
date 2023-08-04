@@ -10,7 +10,8 @@ type TaskArgs struct {
 }
 
 type TaskReply struct {
-	Task *Task
+	Task       *Task
+	QuitWorker bool
 }
 
 type ReportTaskArgs struct {

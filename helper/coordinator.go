@@ -71,7 +71,7 @@ func (c *Coordinator) getTask(taskIndex int) Task {
 		NMaps:    len(c.inputFiles),
 		Index:    taskIndex,
 		Phase:    c.taskPhase,
-		Alive:    true, // should this always be true? what does this even mean?
+		Finished: c.taskStats[taskIndex].Status == TaskStatusFinish,
 	}
 
 	if task.Phase == MapPhase {
@@ -113,9 +113,10 @@ func (c *Coordinator) ScheduleJobs() error {
 			allJobsFinished = false
 
 			// Resend if channel is empty and task is still queued
-			if len(c.taskChannel) == 0 {
-				c.taskChannel <- c.getTask(index)
-			}
+			// Assuming TaskStatus changes on every task read from channel
+			// if len(c.taskChannel) == 0 {
+			// 	c.taskChannel <- c.getTask(index)
+			// }
 
 		case TaskStatusRunning:
 			allJobsFinished = false
@@ -152,6 +153,11 @@ func (c *Coordinator) ScheduleJobs() error {
 			c.taskChannel <- c.getTask(0)
 		} else {
 			c.jobsFinished = true
+			log.WithFields(log.Fields{
+				"actorType":  "coordinator",
+				"methodName": "ScheduleJobs()",
+			}).Info("All Jobs finished. Closing Task Channel")
+			close(c.taskChannel)
 		}
 	}
 
@@ -178,18 +184,27 @@ func (c *Coordinator) GetTaskForWorker(args *TaskArgs, reply *TaskReply) error {
 	log.WithFields(log.Fields{
 		"actorType":  "coordinator",
 		"methodName": "GetTaskForWorker()",
-	}).Infof("Getting task for worker #%d. Length of TaskChannel: %d", args.WorkerId, len(c.taskChannel))
+	}).Tracef("Getting task for worker #%d. Length of TaskChannel: %d", args.WorkerId, len(c.taskChannel))
 
-	task := <-c.taskChannel
-	reply.Task = &task
+	task, channelOpen := <-c.taskChannel
 
-	if task.Alive {
-		c.AssignTaskToWorker(&task, args.WorkerId)
-	} else {
+	if !channelOpen {
 		log.WithFields(log.Fields{
 			"actorType":  "coordinator",
 			"methodName": "GetTaskForWorker()",
-		}).Fatalf("Task %d is dead", task.Index)
+		}).Info("Task channel closed. Quitting worker #", args.WorkerId)
+
+		reply.Task = new(Task)
+		reply.Task.Finished = true
+
+		reply.QuitWorker = true
+		return nil
+	}
+
+	reply.Task = &task
+
+	if !reply.Task.Finished {
+		c.AssignTaskToWorker(reply.Task, args.WorkerId)
 	}
 
 	return nil
@@ -203,7 +218,7 @@ func (c *Coordinator) UpdateTaskStatus(args *ReportTaskArgs, reply *ReportTaskRe
 		log.WithFields(log.Fields{
 			"actorType":  "coordinator",
 			"methodName": "UpdateTaskStatus()",
-		}).Fatal("Mismatched Task Args")
+		}).Fatal("Mismatched Task Args. ", c.taskPhase, args.Phase, args.WorkerId, c.taskStats[args.Index].WorkerId)
 	}
 
 	if args.Done {

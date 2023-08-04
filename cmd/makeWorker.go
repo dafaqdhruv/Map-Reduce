@@ -1,7 +1,3 @@
-/*
-Copyright © 2022 NAME HERE <EMAIL ADDRESS>
-
-*/
 package cmd
 
 import (
@@ -31,7 +27,7 @@ var makeWorkerCmd = &cobra.Command{
 
 func init() {
 	rootCmd.AddCommand(makeWorkerCmd)
-	
+
 	log.SetFormatter(&log.TextFormatter{})
 	log.SetOutput(os.Stdout)
 	log.SetLevel(log.InfoLevel)
