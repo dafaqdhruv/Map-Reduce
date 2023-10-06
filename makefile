@@ -13,3 +13,7 @@ clean:
 	rm -f ${BINARY_NAME}
 	rm -f mr-*
 	rm -f mr-out*
+
+fresh-slate:
+	rm -f mr-*
+	rm -f mr-out*
